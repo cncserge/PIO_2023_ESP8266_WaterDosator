@@ -29,6 +29,7 @@ Button btOk(&bt_ok, INPUT_PULLDOWN_16);
 Button btStart(14, INPUT_PULLUP);
 
 const int pinKlapan = 15;
+const int pinBuzzer = 16;
 void menuPrc(void);
 void setupPrc(void);
 void isrCount(void);
@@ -48,6 +49,7 @@ void setup() {
   EEPROM.begin(512);
   //Serial.begin(9600);
   pinMode(pinKlapan, OUTPUT);
+  pinMode(pinBuzzer, OUTPUT);
 #ifdef ON_LOW
   digitalWrite(pinKlapan, HIGH);
 #else
@@ -160,6 +162,24 @@ void loop(){
   menuPrc();
   setupPrc();
 
+
+  {
+    static unsigned long tim = millis();
+    static bool buzz = false;
+    if(btUp.isPressed() || btDn.isPressed() || btOk.isPressed() || btStart.isPressed()){
+      buzz = true;
+    }
+    if(buzz){
+      digitalWrite(pinBuzzer, HIGH);
+      if(millis() - tim >= 100UL){
+        buzz = false;
+      }
+    }
+    else{
+      digitalWrite(pinBuzzer, LOW);
+      tim = millis();
+    }
+  }
   // {
   //   static unsigned long t = millis();
   //   if(millis() - t >= 500){
@@ -209,6 +229,16 @@ void menuPrc(void){
   static int preValSetPoint = -1;
   static int prepulseCnt = -1;
   static int preMenuMode = -1;
+  static int preClapan = -1;
+  int        clapan = 0;
+  #ifdef ON_LOW // end -> close state
+            clapan = (digitalRead(pinKlapan) == HIGH ? 0 : 1);
+            //digitalWrite(pinKlapan, HIGH);
+  #else
+            //digitalWrite(pinKlapan, LOW); 
+            clapan = (digitalRead(pinKlapan) == LOW ? 0 : 1);
+  #endif 
+
   if(preMenuMode != menuMode){
     preMenuMode = menuMode;
     if(menuMode == RUN){
@@ -217,6 +247,18 @@ void menuPrc(void){
       lcd.print("Set point:");
       lcd.setCursor(0, 1);
       lcd.print("Filled   :");
+    }
+  }
+  if(preClapan != clapan){
+    preClapan = clapan;
+    if(menuMode == RUN){
+      lcd.setCursor(7, 1);
+      lcd.print("  ");
+      lcd.setCursor(7, 1);
+      if(clapan)
+        lcd.print("->");
+      else
+        lcd.print("-|");
     }
   }
   if(menuMode == RUN){
